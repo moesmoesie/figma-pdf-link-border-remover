@@ -7,34 +7,56 @@ export default function Home() {
     </main>
   );
 }
+import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
 import React, { useState } from "react";
 
 const PdfPrinter = () => {
-  const [pdfData, setPdfData] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === "application/pdf") {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const data = reader.result;
-        setPdfData(data as string);
-      };
-      reader.readAsBinaryString(file);
-    } else {
-      setPdfData(null);
-    }
+
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(file!);
+
+    reader.onload = function () {
+      const data = reader.result;
+      setPdfData(data as ArrayBuffer);
+    };
   };
 
-  const handlePrintClick = () => {
+  const handlePrintClick = async () => {
     if (!pdfData) {
       return;
     }
 
-    const modifiedPdfData = pdfData.replace(/\/Rect\s*\[[^\]]*\]/g, "");
+    const pdfDoc = await PDFDocument.load(pdfData);
+
+    // Get all the pages
+    const pages = pdfDoc.getPages();
+
+    // Iterate over each page
+    for (let page of pages) {
+      // Get the annotations for the page
+      const annotations = page.node.Annots()!.asArray();
+
+      // Iterate over each annotation
+      for (let annotation of annotations) {
+        if (annotation instanceof PDFDict) {
+          const annotationType = annotation.get(PDFName.of("Subtype"));
+          if (annotationType === PDFName.of("Link")) {
+            annotation.delete(PDFName.of("Rect"));
+          }
+        }
+      }
+    }
+
+    const modifiedPdfData = await pdfDoc.save();
     const modifiedPdfBlob = new Blob([modifiedPdfData], {
       type: "application/pdf",
     });
+
+    // Create a download link and click it to download the modified PDF
     const modifiedPdfUrl = URL.createObjectURL(modifiedPdfBlob);
     const downloadLink = document.createElement("a");
     downloadLink.download = "modified.pdf";
