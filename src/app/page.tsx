@@ -45,7 +45,7 @@ const PdfPrinter = () => {
         if (annotation instanceof PDFDict) {
           const annotationType = annotation.get(PDFName.of("Subtype"));
           if (annotationType === PDFName.of("Link")) {
-            annotation.delete(PDFName.of("Rect"));
+            annotation.set(PDFName.of("Border"), pdfDoc.context.obj([0, 0, 0]));
           }
         }
       }
@@ -56,7 +56,6 @@ const PdfPrinter = () => {
       type: "application/pdf",
     });
 
-    // Create a download link and click it to download the modified PDF
     const modifiedPdfUrl = URL.createObjectURL(modifiedPdfBlob);
     const downloadLink = document.createElement("a");
     downloadLink.download = "modified.pdf";
